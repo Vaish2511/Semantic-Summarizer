@@ -63,6 +63,8 @@ Here’s the list of dependencies in requirements.txt:
 7. sentence-transformers==2.2.0
 8. torch==1.10.0
 9. transformers==4.11.3
+10. langchain==0.0.101
+11. huggingface_hub==0.0.19  
 
 ## **3. Usage Instructions**
 1. Upload Documents: Use the Sidebar to upload two documents (PDF, DOCX, or TXT) for comparison.
