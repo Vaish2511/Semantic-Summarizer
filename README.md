@@ -1,47 +1,47 @@
-**Semantic Summarizer: Document Summarization and Similarity Comparison**
+## Semantic Summarizer: Document Summarization and Similarity Comparison
 
-Overview:
+## Overview:
 This project implements a semantic summarization system that can process documents (PDF, DOCX, TXT) and generate concise summaries while respecting the specified summary length. Additionally, it computes similarity metrics between two documents and presents insightful visualizations, all through an intuitive Streamlit interface.
 
-Key Features:
-    1. Summarization of technical documents with user-defined summary length.
-    2. Similarity comparison between two documents using cosine similarity and overlap metrics.
-    3. Interactive visualizations for similarity, dissimilarity, and overlap metrics.
-    4. Handles references, tables, and figures to focus on the main content of the document.
-    5. Support for three models: DistilBART, DistilGPT2, and T5-Small.
-    6. Page-wise summarization for large documents to generate concise and relevant summaries.
-    7. Logging to track the flow of execution and capture errors.
+## Key Features:
+1. Summarization of technical documents with user-defined summary length.
+2. Similarity comparison between two documents using cosine similarity and overlap metrics.
+3. Interactive visualizations for similarity, dissimilarity, and overlap metrics.
+4. Handles references, tables, and figures to focus on the main content of the document.
+5. Support for three models: DistilBART, DistilGPT2, and T5-Small.
+6. Page-wise summarization for large documents to generate concise and relevant summaries.
+7. Logging to track the flow of execution and capture errors.
 
-**Table of Contents**
-    1. Project Setup
-    2. Dependencies
-    3. Usage Instructions
-    4. Application Details
-        i. Text Preprocessing
-        ii. Model Selection
-        iii. User Interface
-        iv. Visualizations
-    5. Logging
-    6. Development Notes
-    7. Future Enhancements
+## Table of Contents
+1. [Project Setup](#1-project-setup)
+2. [Dependencies](#2-dependencies)
+3. [Usage Instructions](#3-usage-instructions)
+4. [Application Details](#4-application-details)
+    - i. [Text Preprocessing](#i-text-preprocessing)
+    - ii. [Model Selection](#ii-model-selection)
+    - iii. [User Interface](#iii-user-interface)
+    - iv. [Visualizations](#iv-visualizations)
+5. [Logging](#5-logging)
+6. [Development Notes](#6-development-notes)
+7. [Future Enhancements](#7-future-enhancements)
 
-**1. Project Setup**
+## **1. Project Setup**
 To get the application up and running on your local machine, follow the steps below.
-    Step 1: Clone the Repository
-    First, clone the repository to your local machine:
-        git clone https://github.com/your-repository/semantic-summarizer.git
-        cd semantic-summarizer
-    Step 2: Set Up the Virtual Environment
-    Create and activate a virtual environment:
-        python -m venv venv
-        source venv/bin/activate  # On Windows, use 'venv\Scripts\activate'
-    Step 3: Install Dependencies
-    Install the required dependencies using the requirements.txt file:
-        pip install -r requirements.txt
-    Step 4: Run the Application
-    After installing the dependencies, you can run the Streamlit app:
-        streamlit run app.py
-    The application will open in your default web browser, and you can interact with it via the Streamlit UI.
+### Step 1: Clone the Repository
+First, clone the repository to your local machine:
+    git clone https://github.com/your-repository/semantic-summarizer.git
+    cd semantic-summarizer
+### Step 2: Set Up the Virtual Environment
+Create and activate a virtual environment:
+    python -m venv venv
+    source venv/bin/activate  # On Windows, use 'venv\Scripts\activate'
+### Step 3: Install Dependencies
+Install the required dependencies using the requirements.txt file:
+    pip install -r requirements.txt
+### Step 4: Run the Application
+After installing the dependencies, you can run the Streamlit app:
+    streamlit run app.py
+The application will open in your default web browser, and you can interact with it via the Streamlit UI.
 
 **2. Dependencies**
 The application relies on the following libraries:
