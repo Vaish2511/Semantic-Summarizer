@@ -4,76 +4,63 @@ import streamlit as st
 from docx import Document
 import PyPDF2
 import torch
-from transformers import (
-    pipeline,
-    T5Tokenizer, T5ForConditionalGeneration,
-    BartTokenizer, BartForConditionalGeneration
-)
+from langchain.chains import LLMChain
+from langchain.llms import HuggingFacePipeline
+from langchain.prompts import PromptTemplate
 from sentence_transformers import SentenceTransformer
-from sklearn.decomposition import PCA
+from sklearn.decomposition import PCA  
 import pandas as pd
 import plotly.express as px
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 import logging
+from transformers import (
+    pipeline,
+    T5Tokenizer, T5ForConditionalGeneration,
+    BartTokenizer, BartForConditionalGeneration
+)
 
 # ─── LOGGING SETUP ───────────────────────────────────────────
-# Configuring logging to capture events, warnings, and errors
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # ─── UTILITY CLASSES ─────────────────────────────────────────
 
 class FileReader:
-    """
-    This class is responsible for reading different file types: PDF, DOCX, and TXT.
-    Each method returns the cleaned text from the respective file format.
-    """
+    """Handles reading different types of documents."""
     @staticmethod
     def read_docx(f):
-        """Reads DOCX file and returns the text."""
+        """Reads a DOCX file and returns the extracted text."""
         doc = Document(f)
         return "\n".join(p.text for p in doc.paragraphs)
 
     @staticmethod
     def read_pdf(f):
-        """Reads PDF file and returns the text."""
+        """Reads a PDF file and returns the extracted text."""
         reader = PyPDF2.PdfReader(f)
         return "\n".join(page.extract_text() or "" for page in reader.pages)
 
     @staticmethod
     def read_txt(f):
-        """Reads TXT file and returns the text."""
+        """Reads a TXT file and returns the extracted text."""
         return f.read().decode("utf-8")
 
-
 class TextProcessor:
-    """
-    This class is responsible for text preprocessing:
-    - Cleaning unwanted sections (e.g., references, tables)
-    - Tokenizing the text into sentences and words
-    """
+    """Handles text preprocessing, tokenization, and chunking."""
     @staticmethod
     def clean_text(text):
-        """
-        Cleans text by removing unwanted sections like references and tables, and
-        handling broken hyphens.
-        """
+        """Cleans text by removing unnecessary sections like references, tables, and figures."""
         txt = text.replace("\n", " ")
-        # Glue broken hyphens (e.g., "long-" and "text" becomes "longtext")
-        txt = re.sub(r"(\w+)-\s+(\w+)", r"\1\2", txt)
-        # Drop sections like 'Acknowledgment' or 'References'
+        txt = re.sub(r"(\w+)-\s+(\w+)", r"\1\2", txt)  # Glue broken hyphens
         lower = txt.lower()
         for marker in ("acknowledgment", "acknowledgements", "references"):
             if marker in lower:
-                txt = txt[: lower.index(marker)]
+                txt = txt[: lower.index(marker)]  # Remove sections after specific markers
         return txt.strip()
 
     @staticmethod
     def remove_redundant_sentences(text: str):
-        """
-        Removes duplicate sentences from the text using regex to tokenize sentences.
-        """
+        """Removes redundant sentences from the text."""
         sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text)
         seen = set()
         output = []
@@ -86,10 +73,7 @@ class TextProcessor:
 
     @staticmethod
     def smart_split_sentences(text, max_sentences=5):
-        """
-        Splits text into chunks, where each chunk contains a maximum number of sentences.
-        This ensures that the text remains within model input limits.
-        """
+        """Splits text into chunks with a specified max number of sentences."""
         sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text)
         chunks = []
         for i in range(0, len(sentences), max_sentences):
@@ -100,36 +84,26 @@ class TextProcessor:
 
     @staticmethod
     def word_tokenize(text):
-        """
-        Tokenizes text into words using regex, similar to nltk.word_tokenize.
-        """
-        return re.findall(r'\b\w+\b', text.lower())  # Extract words by matching word boundaries
-
+        """Tokenizes text into words using regex."""
+        return re.findall(r'\b\w+\b', text.lower())  # Matches word boundaries
 
 class Summarizer:
-    """
-    Singleton class to load and cache the summarization models, ensuring models are only loaded once.
-    Handles chunked summarization of the documents.
-    """
+    """Handles text summarization using Langchain models."""
     _instance = None
 
     def __new__(cls, model_choice):
-        """Ensures that only one instance of the Summarizer class exists."""
+        """Ensures only one instance of Summarizer class is created."""
         if not cls._instance:
             cls._instance = super(Summarizer, cls).__new__(cls)
             cls._instance.model_choice = model_choice
-            cls._instance.summarizer_pipeline, cls._instance.tokenizer = cls.load_model_pipeline(model_choice)
+            cls._instance.llm = cls.load_langchain_model(model_choice)
         return cls._instance
 
     @staticmethod
     def load_model_pipeline(choice):
-        """
-        Loads the pre-trained model based on the user's choice.
-        Models are loaded once and cached for subsequent requests.
-        """
+        """Loads the model once and returns the summarizer pipeline."""
         logger.info(f"Loading model: {choice}")
 
-        # Load the tokenizer and model based on the selected option
         if choice == "DistilBART":
             tokenizer = BartTokenizer.from_pretrained("sshleifer/distilbart-cnn-12-6", use_fast=True)
             model = BartForConditionalGeneration.from_pretrained("sshleifer/distilbart-cnn-12-6")
@@ -142,22 +116,41 @@ class Summarizer:
         else:
             raise ValueError(f"Model choice {choice} is not recognized.")
 
-        # Initialize the summarization pipeline
         summarizer_pipeline = pipeline("summarization", model=model, tokenizer=tokenizer, device=0 if torch.cuda.is_available() else -1)
         logger.info(f"Model {choice} loaded successfully.")
         return summarizer_pipeline, tokenizer
 
-    def build_few_shot_prompt(self, new_input):
-        """
-        Builds a few-shot prompt for the model, guiding it on how to summarize the given text.
-        """
-        prompt = f"Summarize this technical paper:\n{new_input}\nSummary:"
-        return prompt
+    @staticmethod
+    def load_langchain_model(choice):
+        """Loads the Hugging Face model into Langchain's pipeline."""
+        logger.info(f"Loading LangChain model: {choice}")
+        
+        # Selecting model based on user choice
+        if choice == "DistilBART":
+            model_name = "sshleifer/distilbart-cnn-12-6"
+        elif choice == "T5-Small":
+            model_name = "t5-small"
+        elif choice == "T5-Base":
+            model_name = "t5-base"
+        else:
+            raise ValueError(f"Model choice {choice} is not recognized.")
+
+        # Initialize Hugging Face pipeline for summarization
+        summarizer_pipeline = pipeline("summarization", model=model_name)
+        
+        # Wrap the pipeline with LangChain's HuggingFacePipeline
+        llm = HuggingFacePipeline(pipeline=summarizer_pipeline)
+        
+        # Create prompt template for summarization
+        prompt = PromptTemplate(input_variables=["text"], template="Summarize this technical paper:\n{text}\nSummary:")
+        
+        # Build LangChain summarization pipeline
+        llm_chain = LLMChain(prompt=prompt, llm=llm)
+        logger.info(f"LangChain model {choice} loaded successfully.")
+        return llm_chain
 
     def summarize_text_few_shot(self, text):
-        """
-        Summarizes the provided text by splitting it into chunks and processing them in parallel.
-        """
+        """Summarizes the given text chunk by chunk using LangChain."""
         chunks = TextProcessor.smart_split_sentences(text, max_sentences=5)
         summaries = []
 
@@ -177,19 +170,17 @@ class Summarizer:
         return final_summary
 
     def summarize_chunk(self, chunk):
-        """Summarizes a single chunk of text."""
-        prompt = self.build_few_shot_prompt(chunk)
+        """Summarizes a single chunk of text using LangChain."""
         try:
-            result = self.summarizer_pipeline(prompt, max_length=150, do_sample=True)[0]
-            return result['summary_text'].strip()
+            # Generate summary for the chunk using LangChain
+            result = self.llm.run({"text": chunk})
+            return result.strip()
         except Exception as e:
             logger.error(f"Error summarizing chunk: {e}")
             return f"Error summarizing chunk: {e}"
 
     def extractive_top_k(self, text: str, k: int=3):
-        """
-        Extracts the top K most relevant sentences based on semantic similarity.
-        """
+        """Extracts top K most relevant sentences based on semantic similarity."""
         sentences = re.split(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s', text)  # Tokenizing sentences with regex
         if len(sentences) <= k:
             return sentences
@@ -207,15 +198,11 @@ class Summarizer:
         return [sentences[i] for i in top_idx]
 
 class Visualization:
-    """
-    Singleton class to handle various visualizations for the document comparison:
-    - Word frequency heatmap
-    - Sentence embedding scatter plot
-    """
+    """Handles the visualization of the comparison results."""
     _instance = None
 
     def __new__(cls):
-        """Ensures that only one instance of the Visualization class exists."""
+        """Ensures only one instance of the Visualization class is created."""
         if not cls._instance:
             cls._instance = super(Visualization, cls).__new__(cls)
         return cls._instance
@@ -285,19 +272,20 @@ if start:
         st.sidebar.error("Please upload both files.")
         st.stop()
 
+    # read & clean
     ext1 = f1.name.rsplit(".",1)[-1].lower()
     ext2 = f2.name.rsplit(".",1)[-1].lower()
     raw1 = FileReader.read_pdf(f1) if ext1 == "pdf" else FileReader.read_docx(f1) if ext1 == "docx" else FileReader.read_txt(f1)
     raw2 = FileReader.read_pdf(f2) if ext2 == "pdf" else FileReader.read_docx(f2) if ext2 == "docx" else FileReader.read_txt(f2)
     text1, text2 = TextProcessor.clean_text(raw1), TextProcessor.clean_text(raw2)
 
-    # Generative Summary
+    # generative summary
     summarizer = Summarizer(model_choice)
     with st.spinner("Generating summaries…"):
         gen1 = summarizer.summarize_text_few_shot(text1)
         gen2 = summarizer.summarize_text_few_shot(text2)
 
-    # Clean up Repetition
+    # clean up repetition
     full1 = TextProcessor.remove_redundant_sentences(gen1)
     full2 = TextProcessor.remove_redundant_sentences(gen2)
 
