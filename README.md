@@ -119,5 +119,5 @@ This ensures that if something goes wrong, you can trace it back through the log
 3. Better Summary Merging: After summarizing each page, merging the page-wise summaries intelligently to meet the target length could be implemented.
 4. User Authentication: Adding authentication (via OAuth or another service) could help in handling large-scale deployments and personalized summaries.
 
-## **8. Conclusion**
+### 8. Conclusion
 This Semantic Summarizer provides an intuitive interface for generating summaries of technical documents with customizable lengths. It also supports similarity comparison between two documents and visualizes the results for better insight. The system is designed to be efficient and scalable, with the ability to handle large documents and ensure production-quality output through logging and error tracking.
