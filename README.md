@@ -3,6 +3,10 @@
 ## Overview:
 This project implements a semantic summarization system that can process documents (PDF, DOCX, TXT) and generate concise summaries while respecting the specified summary length. Additionally, it computes similarity metrics between two documents and presents insightful visualizations, all through an intuitive Streamlit interface.
 
+<img width="1280" alt="SummaryComparison" src="https://github.com/user-attachments/assets/e8cd8609-42b3-4ce1-9173-434086678ce0" />
+
+<img width="1280" alt="Visualizations" src="https://github.com/user-attachments/assets/fd1c5bec-5a7a-42d0-ae27-f34de4b27e3c" />
+
 ## Key Features:
 1. Summarization of technical documents with user-defined summary length.
 2. Similarity comparison between two documents using cosine similarity and overlap metrics.
